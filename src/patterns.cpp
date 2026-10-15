@@ -892,10 +892,14 @@ using SigFollowMode = MemHlp::SigFollowMode;
 
 namespace Patterns
 {
+	// Parental::setup flips the jne at +2.  The failure path pushes a member
+	// for its log line (`push [eax+disp32]`, 0x182 -> 0x166 on the 2026-10
+	// client); it is location-only, so its low bytes are masked.  The jne
+	// distance (0x27) keeps the sibling check (jne 0x63) out: one match.
 	Pattern_t ParentalSignatureCheck
 	{
 		"ParentalSignatureCheck",
-		"84 C0 75 27 8B 85 ? ? ? ? 8D 9D ? ? ? ? 83 EC 04 FF B0 82 01 00 00 8D 86 ? ? ? ? 50 53 E8 ? ? ? ?",
+		"84 C0 75 27 8B 85 ? ? ? ? 8D 9D ? ? ? ? 83 EC 04 FF B0 ? ? 00 00 8D 86 ? ? ? ? 50 53 E8 ? ? ? ?",
 		SigFollowMode::None
 	};
 	Pattern_t ParentalSettingsReceived
@@ -996,11 +1000,17 @@ namespace Patterns
 
 	namespace CAPIJob
 	{
+		// Direct cdecl entry of the CAPIJobRequestUserStats job body (the
+		// function carrying "Player.GetUserStats#1"; one caller passes the
+		// job as its only argument).  This was a call-site + Relative follow,
+		// but the 2026-10 client rewrote that caller.  The entry is the same
+		// function: PIC-thunk prologue, `this` from [ebp+8], stack cookie.  The
+		// frame size and frame-relative spills are masked; one .text match.
 		Pattern_t GetPlayerStats
 		{
 			"CAPIJob::GetPlayerStats",
-			"E8 ? ? ? ? 83 C4 10 89 C5 E9 ? ? ? ? ? ? 80 BE ? ? ? ? 00",
-			SigFollowMode::Relative
+			"55 89 E5 57 E8 ? ? ? ? 81 C7 ? ? ? ? 56 53 81 EC ? ? 00 00 8B 75 08 89 B5 ? ? FF FF 89 FB 65 A1 14 00 00 00 89 45 E4 31 C0 8D 85 ? ? FF FF 6A 00 50",
+			SigFollowMode::None
 		};
 	}
 
@@ -1111,11 +1121,14 @@ namespace Patterns
 		// CCompatManager is an embedded member of the local CUser. Locate the
 		// constructor call and retain the LEA so CSteamEngine can decode its
 		// displacement instead of pinning a build-specific class offset.
+		// 2026-10 client: `lea ecx,[esi+disp32]; pop; push esi; push ecx;
+		// spill; call ctor` (was `lea ebx` + `mov ebx,edi`).  Only this form is
+		// decoded, because the same update reordered IClientCompat's vtable
+		// (see VFTIndexes::IClientCompat).
 		Pattern_t Offset_CompatManager
 		{
 			"CUser::m_CompatManager",
-			"8D 9E ? ? ? ? 89 9D ? ? ? ? 53 89 FB E8 ? ? ? ? 58 5A "
-			"C7 86 ? ? ? ? FF FF FF FF",
+			"8D 8E ? ? ? ? 58 56 51 89 8D ? ? ? ? E8 ? ? ? ? 58 5A C7 86 ? ? ? ? FF FF FF FF",
 			SigFollowMode::None,
 			nullptr,
 			"Patterns::CUser::Offset_CompatManager"
@@ -1495,10 +1508,16 @@ namespace Patterns
 		//     fixPICThunkCall repairs the relocated thunk in the tramp.
 		//     Verified: 1 match in .text (entry VA 0x11413e0 on build
 		//     cfe99f0cc8fee644e2a8e3d1a0794e49).
+		//     The 2026-10 client (1791918634) shrank the frame 0x48c -> 0x43c
+		//     and reassigned the argument registers; it now copies the vector
+		//     before planning, after this hook has filtered it.  Same callers
+		//     (four flag-0/flag-1 pairs), same ABI and DepotEntry layout.  The
+		//     neighbouring yielding variant kept the old 0x48c frame and is
+		//     NOT this function.  One match at entry VA 0x132bb60.
 		Pattern_t BuildDepotDependency
 		{
 			"CDepotDownloadMgr::BuildDepotDependency",
-			"E8 ? ? ? ? 05 ? ? ? ? 55 89 E5 57 56 53 81 EC 8C 04 00 00 8B 55 10 8B 7D 0C 89 85 A0 FB FF FF 8B 45 08",
+			"E8 ? ? ? ? 05 ? ? ? ? 55 89 E5 57 56 53 81 EC 3C 04 00 00 8B 5D 08 8B 75 14 89 85 ? ? FF FF 8B 45 0C",
 			SigFollowMode::None
 		};
 
