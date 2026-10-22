@@ -541,16 +541,15 @@ void pruneUnsupportedDepots(YAML::Node& body, uint32_t appId,
 			usableDlcAppIds.insert(dlcAppId);
 		}
 
-		// Track which OS this surviving depot supports so we can
-		// narrow common.oslist later.
-		if (depotNode.IsMap() && depotNode["config"] &&
-		    depotNode["config"]["oslist"])
+		if (!isVirtualDlc && depotNode.IsMap())
 		{
 			std::string osStr;
-			try { osStr = depotNode["config"]["oslist"].as<std::string>(); }
-			catch (...) {}
-			const auto parsed = parsePlatformOsList(osStr);
-			survivingOs.insert(parsed.begin(), parsed.end());
+			if (depotNode["config"] && depotNode["config"]["oslist"])
+			{
+				try { osStr = depotNode["config"]["oslist"].as<std::string>(); }
+				catch (...) {}
+			}
+			addDepotPlatforms(survivingOs, osStr);
 		}
 	}
 	std::string commonOsList;
@@ -1571,12 +1570,10 @@ bool cachedWireRequiresProton(const std::string& wire) noexcept
 			const bool virtualDlc = depot["dlcappid"] && !depot["manifests"];
 			if (virtualDlc) continue;
 			++contentDepots;
-			if (depot["config"] && depot["config"]["oslist"])
-			{
-				const auto parsed = parsePlatformOsList(
-					depot["config"]["oslist"].as<std::string>(""));
-				depotOs.insert(parsed.begin(), parsed.end());
-			}
+			addDepotPlatforms(depotOs,
+				depot["config"] && depot["config"]["oslist"]
+					? depot["config"]["oslist"].as<std::string>("")
+					: std::string());
 		}
 
 		std::string commonOsList;
