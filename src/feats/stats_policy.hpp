@@ -142,8 +142,13 @@ void replaceNativePackageApps(Context expected,
 // refresh=true is ONLY for a Steam-owned request thread. Background consumers
 // use the session-scoped observation; they never call Steam from their thread.
 uint64_t localEpoch(uint32_t app, uint32_t account, bool refresh = false);
+// Same thread rule as localEpoch. Unknown and unowned are both false.
+bool nativeLicense(uint32_t app, uint32_t account, bool refresh = false);
 }
 
 // C-only ABI across the LD_AUDIT / LD_PRELOAD namespaces. 0 means passthrough.
 extern "C" uint64_t slsteam_local_stats_epoch_v1(uint32_t app, uint32_t account,
                                                 uint32_t refresh) noexcept;
+// 1 only with native-license evidence for (account, app); 0 means passthrough.
+extern "C" uint32_t slsteam_native_license_v1(uint32_t app, uint32_t account,
+                                              uint32_t refresh) noexcept;

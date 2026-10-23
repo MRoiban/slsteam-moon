@@ -29,6 +29,20 @@ int main()
 	store.invalidate();
 	check(!store.hasNativeLicense(7, 123),
 	      "license invalidation clears native ownership evidence");
+	StatsPolicy::Store licenseStore;
+	licenseStore.setAccount(7);
+	const auto licenseContext = licenseStore.context();
+	licenseStore.observe(7, 321, true, 0, true, false, licenseContext.epoch);
+	check(!licenseStore.hasNativeLicense(7, 321),
+	      "package zero does not export a native license");
+	licenseStore.observe(7, 321, true, 25, true, false, licenseContext.epoch);
+	check(licenseStore.hasNativeLicense(7, 321),
+	      "a real package exports a native license");
+	check(!licenseStore.hasNativeLicense(8, 321),
+	      "native license export cannot cross accounts");
+	licenseStore.invalidate();
+	check(!licenseStore.hasNativeLicense(7, 321),
+	      "native license export is cleared by invalidation");
 	StatsPolicy::Store packageStore;
 	packageStore.observePackage(25, 123);
 	packageStore.setAccount(7);

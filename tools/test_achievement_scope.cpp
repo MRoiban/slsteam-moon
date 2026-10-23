@@ -141,6 +141,24 @@ int main() {
 		request(modern, dup); request(modern, dup);
 		check(safeFailure(modern, response(modern, dup)), "ambiguous duplicate job never publishes another user's progress");
 	}
+	const auto account = static_cast<uint32_t>(self);
+	license(42);
+	check(slsteam_native_license_v1(app, account, 1) == 1,
+	      "refreshed real package exports a native license");
+	check(slsteam_native_license_v1(app, account, 0) == 1,
+	      "native license observation is retained without refresh");
+	check(slsteam_native_license_v1(app, static_cast<uint32_t>(other), 1) == 0,
+	      "native license export rejects another account");
+	StatsPolicy::invalidate();
+	check(slsteam_native_license_v1(app, account, 0) == 0,
+	      "native license export is cleared by invalidation");
+	license(0);
+	check(slsteam_native_license_v1(app, account, 1) == 0,
+	      "package zero does not export a native license");
+	license(42); available = false;
+	check(slsteam_native_license_v1(app, account, 1) == 0,
+	      "missing native user exports no license");
+	available = true;
 	std::printf("%d failure(s)\n", failures);
 	return failures ? 1 : 0;
 }
