@@ -15,6 +15,7 @@ namespace AuditBinding
 		PosixSpawn,
 		PosixSpawnp,
 		LocalStatsEpoch,
+		NativeLicense,
 	};
 
 	// Keep the hot-path classifier deliberately small: only names beginning with
@@ -28,8 +29,11 @@ namespace AuditBinding
 		switch (name[0])
 		{
 			case 's':
-				return std::strcmp(name, "slsteam_local_stats_epoch_v1") == 0
-					? Symbol::LocalStatsEpoch : Symbol::None;
+				if (std::strcmp(name, "slsteam_local_stats_epoch_v1") == 0)
+					return Symbol::LocalStatsEpoch;
+				if (std::strcmp(name, "slsteam_native_license_v1") == 0)
+					return Symbol::NativeLicense;
+				return Symbol::None;
 			case 'e':
 			{
 				const std::size_t length = std::strlen(name);

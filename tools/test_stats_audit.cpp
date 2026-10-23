@@ -10,6 +10,12 @@ uint64_t slsteam_local_stats_epoch_v1(uint32_t, uint32_t, uint32_t) noexcept
 	return 0x1122334455667788ULL;
 }
 
+extern "C" __attribute__((visibility("default")))
+uint32_t slsteam_native_license_v1(uint32_t, uint32_t, uint32_t) noexcept
+{
+	return 0x55667788U;
+}
+
 int main(int argc, char**)
 {
 	using Query = uint64_t (*)(uint32_t, uint32_t, uint32_t);
@@ -19,5 +25,11 @@ int main(int argc, char**)
 	const bool ok = result == expected;
 	std::printf("%s: %s stats bridge (64-bit C ABI on ELF32)\n", ok ? "ok" : "FAIL",
 	            argc > 1 ? "LD_AUDIT" : "fallback");
-	return ok ? 0 : 1;
+	using License = uint32_t (*)(uint32_t, uint32_t, uint32_t);
+	const auto license = reinterpret_cast<License>(dlsym(RTLD_DEFAULT, "slsteam_native_license_v1"));
+	const uint32_t owned = license ? license(123, 7, 0) : UINT32_MAX;
+	const bool licenseOk = owned == (argc > 1 ? 0 : 0x55667788U);
+	std::printf("%s: %s native license bridge\n", licenseOk ? "ok" : "FAIL",
+	            argc > 1 ? "LD_AUDIT" : "fallback");
+	return ok && licenseOk ? 0 : 1;
 }
